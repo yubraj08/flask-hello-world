@@ -1,71 +1,71 @@
 from flask import Blueprint, request,jsonify
-import sqlite3
+from pymongo import MongoClient
+from bson import ObjectId
 import re
 import hashlib
+import os
+from dotenv import load_dotenv
+
+
+db_host = os.getenv("DB_HOST")
+# Connect to MongoDB
+client = MongoClient(db_host)
+db = client['flask_mongo_example']
+users_collection = db['users']
 
 auth_api = Blueprint('auth_api',__name__)
 
 # Register user
+# Register route
 @auth_api.route('/register', methods=['POST'])
 def register():
     try:
-        conn = sqlite3.connect('prediction.db')
-        c = conn.cursor()
-        username = request.json['username']
-        email = request.json['email']
-        password = hash_password(request.json['password'])
+        # Extract data from request
+        data = request.json
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
 
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            return jsonify({'error': 'Invalid email format'}), 400
-        
         # Check if email already exists
-        c.execute("SELECT * FROM users WHERE email=?", (email,))
-        existing_user = c.fetchone()
-        if existing_user:
-            conn.close()
+        if users_collection.find_one({'email': email}):
             return jsonify({'error': 'Email already exists'}), 400
-        
-        # Check if username already exists
-        c.execute("SELECT * FROM users WHERE username=?", (username,))
-        existing_user = c.fetchone()
-        if existing_user:
-            conn.close()
-            return jsonify({'error': 'Username already exists'}), 400
-        
-        c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", (username, email, password))
-        conn.commit()
-        conn.close()
-        return jsonify({'message': 'User created successfully'}), 201
+
+        # Hash password
+        hashed_password = hash_password(password)
+
+        # Insert user into database
+        user_data = {
+            'username': username,
+            'email': email,
+            'password': hashed_password
+        }
+        result = users_collection.insert_one(user_data)
+
+        # Return response
+        user_id = str(result.inserted_id)
+        return jsonify({'message': 'User created successfully', 'user_id': user_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# Register user
+# Login route
 @auth_api.route('/login', methods=['POST'])
 def login():
     try:
-        conn = sqlite3.connect('prediction.db')
-        c = conn.cursor()
-        username_or_email = request.json.get('username')
-        password = hash_password(request.json['password'])
+        # Extract data from request
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
 
-        # Check if username_or_email exists in either username or email column
-        c.execute("SELECT * FROM users WHERE username=? OR email=?", (username_or_email, username_or_email))
-        user = c.fetchone()
-        
+        # Hash password
+        hashed_password = hash_password(password)
+
+        # Check if user exists
+        user = users_collection.find_one({'email': email, 'password': hashed_password})
         if user:
-            # Check if password matches
-            if password == user[3]:  # Assuming password is stored at index 3 in the database
-                conn.close()
-                user_details = {'id': user[0], 'username': user[1], 'email': user[2]}
-                return jsonify({'message': 'User created successfully', 'user': user_details}), 201
-            else:
-                conn.close()
-                return jsonify({'error': 'Incorrect password'}), 401
+            user_id = str(user['_id'])
+            return jsonify({'message': 'Login successful', 'user_id': user_id}), 200
         else:
-            conn.close()
-            return jsonify({'error': 'User not found'}), 404
-
+            return jsonify({'error': 'Invalid email or password'}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
