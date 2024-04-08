@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request,jsonify
 from auth_route import auth_api
 
 
@@ -17,6 +17,10 @@ def home():
 @app.route('/about')
 def about():
     return 'About'
+
+@auth_api.route('/register', methods=['GET'])
+def register():
+    return jsonify({'message': 'Testing Api'}), 201
 
 # if __name__ == '__main__':
 #     app.run(debug=True)
