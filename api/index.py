@@ -18,7 +18,7 @@ def home():
 def about():
     return 'About'
 
-@auth_api.route('/register', methods=['GET'])
+@app.route('/register', methods=['GET'])
 def register():
     return jsonify({'message': 'Testing Api'}), 201
 
