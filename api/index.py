@@ -1,5 +1,5 @@
 from flask import Flask
-from auth_route import auth_api
+# from auth_route import auth_api
 
 
 
@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 
 
-app.register_blueprint(auth_api)
+# app.register_blueprint(auth_api)
 
 
 @app.route('/')
@@ -18,5 +18,5 @@ def home():
 def about():
     return 'About'
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
